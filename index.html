@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Title</title>
+    <meta charset="utf-8">
+    <style>
+      @import url(https://fonts.googleapis.com/css?family=Yanone+Kaffeesatz);
+      @import url(https://fonts.googleapis.com/css?family=Droid+Serif:400,700,400italic);
+      @import url(https://fonts.googleapis.com/css?family=Ubuntu+Mono:400,700,400italic);
+
+      body { font-family: 'Droid Serif'; }
+
+      h1, h2, h3 {
+        font-family: 'Yanone Kaffeesatz';
+        font-weight: normal;
+      }
+
+      .remark-code, .remark-inline-code { font-family: 'Ubuntu Mono'; }
+
+      .boom {
+        text-align: center;
+      }
+
+      .boom img {
+        width: 100%;
+        max-width: 600px;
+      }
+
+    </style>
+  </head>
+  <body>
+    <textarea id="source">
+
+class: center, middle
+
+# DIY DI
+
+@killtheliterate
+
+---
+
+# code with a side-effecting dependency 
+
+```javascript
+import axios from 'axios'
+
+// Arbitrary example of something that looks real-world-ish
+export function ClientMaker (baseURL) {
+  const client = axios.create({
+    baseURL,
+    headers: { 'A-Header-That-I-Need': 'yep' }
+  })
+
+  return {
+    get: endpoint => client.get(endpoint),
+    post: (endpoint, payload) => client.post(endpoint, payload)
+    // ...etc
+  }
+}
+```
+
+---
+
+# a test that relies on network connectivity
+
+```javascript
+import { ClientMaker } from './http'
+
+const client = ClientMaker('https://postman-echo.com')
+
+test('can Post', () => {
+  return client.post('/post', { foo: 'bar' })
+    .then(response => {
+      expect(response.data.data).toEqual({ foo: 'bar' })
+    })
+})
+```
+
+
+* test will fail if there is not network connection (a side-effect)
+* leads to "flaky tests" (the worst)
+
+```sh
+$ npm test
+
+ FAIL  ./_broken.test.js
+  ✕ can Post (24ms)
+
+  ● can Post
+
+    getaddrinfo ENOTFOUND postman-echo.com postman-echo.com:443
+```
+
+---
+
+# a solution: mocking libraries
+
+* Sinon
+* Jest dependency mocking
+* Proxyquire
+* etc...
+
+power-tools. like bringing a bazooka to a butter knife fight.
+
+<div class='boom'>
+  <img src='https://thumbs.gfycat.com/HeartfeltBlondAlaskanmalamute-max-1mb.gif' />
+</div>
+
+---
+
+# dependency injection with a closure
+
+```javascript
+import axios from 'axios'
+
+// by adding a closure, we can inject axios...
+const _ClientMaker = (axios) => (baseURL) {
+  const client = axios.create({
+    baseURL,
+    headers: { 'A-Header-That-I-Need': 'yep' }
+  })
+
+  return {
+    get: endpoint => client.get(endpoint),
+    post: (endpoint, payload) => client.post(endpoint, payload)
+    // ...etc
+  }
+}
+
+// ...here
+export const ClientMaker = _ClientMaker(axios)
+
+export const Test = {
+  _ClientMaker
+}
+```
+
+---
+
+# a test with ez-mode dependency injection
+
+```javascript
+const Test = require('./http').Test
+
+// create a predictable dependency
+const AxiosMock = {
+  create: () => ({
+    post: jest.fn(/* ...truncated 'cause slides */)
+  })
+}
+
+const client = Test._ClientMakerP(AxiosMock)('https://postman-echo.com')
+
+test('can POST', () => {
+  return client.post('/post', { foo: 'bar' })
+    .then(response => {
+      expect(response.data.data).toEqual({ foo: 'bar' })
+    })
+})
+```
+
+---
+
+# that's all, folks
+
+[https://thedrearlight.com/blog/di-for-easy.html](https://thedrearlight.com/blog/di-for-easy.html)
+
+    </textarea>
+    <script src="https://remarkjs.com/downloads/remark-latest.min.js">
+    </script>
+    <script>
+      var slideshow = remark.create();
+    </script>
+  </body>
+</html>

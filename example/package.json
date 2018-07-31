@@ -1,0 +1,14 @@
+{
+  "name": "diy-di-example",
+  "version": "1.0.0",
+  "description": "A little DI example",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^0.18.0",
+    "jest": "^23.4.2"
+  }
+}
